@@ -231,8 +231,39 @@
 
     .sidebar__search { padding: var(--sp-4); border-block-end: 1px solid var(--color-gray-100); }
 
-    .sidebar__tags {
+    .sidebar__tags-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       padding: var(--sp-2) var(--sp-4);
+      border-block-end: 1px solid var(--color-gray-100);
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      width: 100%;
+      cursor: pointer;
+      font-family: 'Noto Sans Hebrew', -apple-system, sans-serif;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: var(--color-gray-500);
+      text-align: inherit;
+      transition: color var(--dur-fast);
+    }
+
+    .sidebar__tags-toggle:hover { color: var(--color-primary); }
+
+    .sidebar__tags-toggle-arrow {
+      transition: transform var(--dur-fast) var(--ease-out);
+      font-style: normal;
+    }
+
+    .sidebar__tags-toggle--open .sidebar__tags-toggle-arrow {
+      transform: rotate(180deg);
+    }
+
+    .sidebar__tags {
+      padding: var(--sp-2) var(--sp-4) var(--sp-3);
       border-block-end: 1px solid var(--color-gray-100);
       display: flex;
       flex-wrap: wrap;
@@ -242,6 +273,7 @@
     .tag-chip {
       display: inline-flex;
       align-items: center;
+      gap: 4px;
       padding: 2px var(--sp-3);
       border-radius: 999px;
       font-size: var(--fs-xs);
@@ -262,6 +294,14 @@
       border-color: var(--color-primary);
       color: var(--color-bold);
     }
+
+    .tag-chip__count {
+      font-size: 0.6rem;
+      opacity: 0.7;
+      font-weight: 700;
+    }
+
+    .tag-chip--active .tag-chip__count { opacity: 0.85; }
 
     .search-input {
       position: relative;
@@ -1002,6 +1042,10 @@
         <svg class="search-input__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       </div>
     </div>
+    <button class="sidebar__tags-toggle" id="tag-toggle" hidden onclick="toggleTagPanel()">
+      <span id="tag-toggle-label">תגיות</span>
+      <i class="sidebar__tags-toggle-arrow">▾</i>
+    </button>
     <div class="sidebar__tags" id="tag-filters" hidden></div>
     <ul class="sidebar__list" id="skills-list" role="listbox" aria-live="polite"></ul>
   </nav>
@@ -1170,17 +1214,34 @@ function toggleSyncDropdown() {
   menu.hidden = !menu.hidden;
 }
 
+let tagPanelOpen = false;
+
 function renderTagFilters() {
-  const tagSet = new Set();
-  allSkills.forEach(s => (s.tags || []).forEach(t => tagSet.add(t)));
-  const tags = [...tagSet].sort();
+  const tagMap = new Map();
+  allSkills.forEach(s => (s.tags || []).forEach(t => tagMap.set(t, (tagMap.get(t) || 0) + 1)));
+  const tags = [...tagMap.keys()].sort();
+  const toggle = $('tag-toggle');
   const container = $('tag-filters');
-  if (!tags.length) { container.hidden = true; return; }
-  container.hidden = false;
-  container.innerHTML = [
-    `<button class="tag-chip ${!activeTag ? 'tag-chip--active' : ''}" onclick="filterByTag(null)">הכל</button>`,
-    ...tags.map(t => `<button class="tag-chip ${activeTag === t ? 'tag-chip--active' : ''}" onclick="filterByTag('${t.replace(/'/g, "\\'")}')">${t}</button>`)
-  ].join('');
+  if (!tags.length) { toggle.hidden = true; container.hidden = true; return; }
+
+  toggle.hidden = false;
+  $('tag-toggle-label').textContent = activeTag
+    ? `תגית: ${activeTag} (${tagMap.get(activeTag)})`
+    : `תגיות (${tags.length})`;
+  toggle.classList.toggle('sidebar__tags-toggle--open', tagPanelOpen);
+  container.hidden = !tagPanelOpen;
+
+  if (tagPanelOpen) {
+    container.innerHTML = [
+      `<button class="tag-chip ${!activeTag ? 'tag-chip--active' : ''}" onclick="filterByTag(null)">הכל <span class="tag-chip__count">${allSkills.length}</span></button>`,
+      ...tags.map(t => `<button class="tag-chip ${activeTag === t ? 'tag-chip--active' : ''}" onclick="filterByTag('${t.replace(/'/g, "\\'")}')">${t} <span class="tag-chip__count">${tagMap.get(t)}</span></button>`)
+    ].join('');
+  }
+}
+
+function toggleTagPanel() {
+  tagPanelOpen = !tagPanelOpen;
+  renderTagFilters();
 }
 
 function filterByTag(tag) {
