@@ -1,0 +1,42 @@
+name: Bump Version
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - VERSION
+      - skills-manager.html
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          VERSION=$(cat VERSION)
+          IFS='.' read -ra PARTS <<< "$VERSION"
+          PARTS[2]=$((PARTS[2] + 1))
+          NEW_VERSION="${PARTS[0]}.${PARTS[1]}.${PARTS[2]}"
+          echo "$NEW_VERSION" > VERSION
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version in HTML
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          sed -i "s|<span class=\"topbar__version\">v[0-9]*\.[0-9]*\.[0-9]*</span>|<span class=\"topbar__version\">v${NEW_VERSION}</span>|g" skills-manager.html
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add VERSION skills-manager.html
+          git commit -m "chore: bump version to v${{ steps.bump.outputs.new_version }} [skip ci]"
+          git push

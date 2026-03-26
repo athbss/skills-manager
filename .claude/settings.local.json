@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude install:*)",
+      "Bash(npm install:*)",
+      "Bash(claude:*)"
+    ]
+  }
+}
